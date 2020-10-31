@@ -144,7 +144,6 @@ class BackyardFlyer(Drone):
         """
         print("waypoint transition")
         self.target_position = self.all_waypoints.popleft()
-        print("Target Position Inside WAypoint Transition: ", self.target_position)
         self.cmd_position(self.target_position[0],
                           self.target_position[1],
                           self.target_position[2],
