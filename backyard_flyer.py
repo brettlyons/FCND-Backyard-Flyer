@@ -115,6 +115,7 @@ class BackyardFlyer(Drone):
                                self.global_position[2])
 
         self.all_waypoints = self.calculate_box()
+        self.target_position = self.all_waypoints.popleft()
         self.flight_state = States.ARMING
 
     def takeoff_transition(self):
@@ -124,7 +125,6 @@ class BackyardFlyer(Drone):
         3. Transition to the TAKEOFF state
         """
         print("takeoff transition")
-        self.target_position = self.all_waypoints.popleft()
         self.takeoff(self.target_position[2])
         self.flight_state = States.TAKEOFF
 
