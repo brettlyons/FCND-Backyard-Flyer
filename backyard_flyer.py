@@ -110,9 +110,7 @@ class BackyardFlyer(Drone):
         self.arm()
 
         # set the current location to be the home position
-        self.set_home_position(self.global_position[0],
-                               self.global_position[1],
-                               self.global_position[2])
+        self.set_home_position(*self.global_position)
 
         self.all_waypoints = self.calculate_box()
         self.target_position = self.all_waypoints.popleft()
