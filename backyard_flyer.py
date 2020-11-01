@@ -134,10 +134,7 @@ class BackyardFlyer(Drone):
         2. Transition to WAYPOINT state
         """
         print("waypoint transition")
-        self.cmd_position(self.target_position[0],
-                          self.target_position[1],
-                          self.target_position[2],
-                          self.target_position[3])
+        self.cmd_position(*self.target_position)
         self.flight_state = States.WAYPOINT
 
     def landing_transition(self):
