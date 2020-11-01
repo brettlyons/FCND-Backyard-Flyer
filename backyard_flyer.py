@@ -15,16 +15,15 @@ class States(Enum):
     ARMING = 1
     TAKEOFF = 2
     WAYPOINT = 3
-    HOVERING = 4
-    LANDING = 5
-    DISARMING = 6
+    LANDING = 4
+    DISARMING = 5
 
 
 class BackyardFlyer(Drone):
 
     def __init__(self, connection):
         super().__init__(connection)
-        self.target_position = [0.0, 0.0, 0.0]
+        self.target_position = [0.0, 0.0, 0.0, 0.0]
         self.all_waypoints = []
         self.in_mission = True
         self.check_state = {}
@@ -49,16 +48,15 @@ class BackyardFlyer(Drone):
             if altitude > 0.95 * self.target_position[2]:
                 self.landing_transition()
 
-        if self.flight_state == States.HOVERING:
-            if (abs(self.local_position[0] - self.target_position[0] > 0.5)) and abs(self.local_position[1] - self.target_position[1]) > 0.5:
-                self.hovering_transition()
-            elif len(self.all_waypoints) == 0:
-                self.landing_transition()
-            elif self.acceleration_raw[0] < 1 and self.acceleration_raw[1] < 1:
-                self.waypoint_transition()
-
         if self.flight_state == States.WAYPOINT:
-                 self.hovering_transition()
+            if abs(self.local_position[0] - self.target_position[0]) < 0.2 and abs(self.local_position[1] - self.target_position[1]) < 0.2:
+                # 0.2 is minimum distance from waypoint.  Lower is "closer" distance wise, higher counts the waypoint as visited from further away.
+                if len(self.all_waypoints) == 0:
+                    self.landing_transition()
+                else:
+                    self.target_position = self.all_waypoints.popleft()
+                    self.waypoint_transition()
+
 
     def velocity_callback(self):
         """
@@ -86,25 +84,19 @@ class BackyardFlyer(Drone):
         elif self.flight_state == States.TAKEOFF:
             if self.armed:
                 self.waypoint_transition()
-        elif self.flight_state == States.WAYPOINT:
-            if self.armed and len(self.all_waypoints) == 0:
-                self.landing_transition()
-        elif self.flight_state == States.HOVERING and len(self.all_waypoints) != 0:
-                self.waypoint_transition()
         elif self.flight_state == States.DISARMING:
             if not self.armed:
                 self.manual_transition()
 
-    def calculate_box(self, altitude):
+    def calculate_box(self):
 
         """
         1. Return waypoints to fly a box
         """
-        heading = 0.0
-        return deque([[10,0,altitude,0],
-                      [10,10,altitude,0],
-                      [0,10,altitude,0],
-                      [0,0,altitude,0]])
+        return deque([[10.0,0.0,3.0,0.0],
+                      [10.0,10.0,3.0,0.0],
+                      [0.0,10.0,3.0,0.0],
+                      [0.0,0.0,3.0,0.0]])
 
     def arming_transition(self):
         """
@@ -122,6 +114,7 @@ class BackyardFlyer(Drone):
                                self.global_position[1],
                                self.global_position[2])
 
+        self.all_waypoints = self.calculate_box()
         self.flight_state = States.ARMING
 
     def takeoff_transition(self):
@@ -131,10 +124,8 @@ class BackyardFlyer(Drone):
         3. Transition to the TAKEOFF state
         """
         print("takeoff transition")
-        target_altitude = 3.0
-        self.target_position[2] = target_altitude
-        self.takeoff(target_altitude)
-        self.all_waypoints = self.calculate_box(target_altitude)
+        self.target_position = self.all_waypoints.popleft()
+        self.takeoff(self.target_position[2])
         self.flight_state = States.TAKEOFF
 
     def waypoint_transition(self):
@@ -143,20 +134,11 @@ class BackyardFlyer(Drone):
         2. Transition to WAYPOINT state
         """
         print("waypoint transition")
-        self.target_position = self.all_waypoints.popleft()
         self.cmd_position(self.target_position[0],
                           self.target_position[1],
                           self.target_position[2],
                           self.target_position[3])
         self.flight_state = States.WAYPOINT
-
-    def hovering_transition(self):
-        """
-        The drone hovers and waits
-        """
-        print("hovering transition")
-        time.sleep(3)
-        self.flight_state = States.HOVERING # Trigger state callback logic
 
     def landing_transition(self):
         """
